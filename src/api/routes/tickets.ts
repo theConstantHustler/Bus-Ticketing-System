@@ -1,18 +1,51 @@
 import express, { Request, Response, NextFunction } from "express";
-import Ticket from "../models/tickets";
 import mongoose from "mongoose";
+
+import Ticket from "../models/tickets";
+import User from "../models/users";
 
 const router = express.Router();
 
+export const HttpMethods = {
+  GET: "GET",
+  POST: "POST",
+} as const;
+
+enum TicketStatus {
+  OPEN = "open",
+  PENDING = "pending",
+  CONFIRMED = "confirmed",
+  CANCELLED = "cancelled",
+}
+
 router.get("/", (req: Request, res: Response, next: NextFunction) => {
   Ticket.find()
+    .select("_id user bookingDate status price seatNumber")
+    .populate("user", "name email phone")
     .exec()
     .then((docs) => {
       if (docs.length > 0) {
-        console.log(docs);
-        res.status(200).json(docs);
+        const response = {
+          count: docs.length,
+          tickets: docs.map((doc) => {
+            return {
+              _id: doc._id,
+              user: doc.user,
+              bookingDate: doc.bookingDate,
+              status: doc.status,
+              price: doc.price,
+              seatNumber: doc.seatNumber,
+              request: {
+                type: HttpMethods.GET,
+                url: `${process.env.DOMAIN}:${process.env.PORT}/tickets/${doc._id}`,
+              },
+            };
+          }),
+        };
+
+        res.status(200).json(response);
       } else {
-        res.status(200).json({ message: "No tickets found", tickets: [] });
+        res.status(200).json({ count: 0, tickets: [] });
       }
     })
     .catch((err) => {
@@ -22,24 +55,51 @@ router.get("/", (req: Request, res: Response, next: NextFunction) => {
 });
 
 router.post("/", (req: Request, res: Response, next: NextFunction) => {
-  const ticket = new Ticket({
-    _id: new mongoose.Types.ObjectId(),
-    busNumber: req.body.busNumber,
-    assignedTo: req.body.assignedTo,
-    createdAt: new Date().toISOString(),
-    status: req.body.status,
-    price: req.body.price,
-    route: req.body.route,
-  });
+  User.findById(req.body.user)
+    .exec()
+    .then((user) => {
+      if (user) {
+        const ticket = new Ticket({
+          _id: new mongoose.Types.ObjectId(),
+          user: req.body.user,
+          price: req.body.price,
+          seatNumber: req.body.seatNumber,
+          status: TicketStatus.CONFIRMED,
+        });
 
-  ticket
-    .save()
-    .then((result) => {
-      console.log(result);
-      res.status(201).json({
-        message: "Successfully created a new ticket",
-        ticket,
-      });
+        ticket
+          .save()
+          .then((result) => {
+            res.status(201).json({
+              message: "Successfully created a new ticket",
+              ticket: {
+                _id: result._id,
+                user: {
+                  _id: user._id,
+                  name: user.name,
+                  email: user.email,
+                  phone: user.phone,
+                  request: {
+                    type: HttpMethods.GET,
+                    url: `${process.env.DOMAIN}:${process.env.PORT}/users/${user._id}`,
+                  },
+                },
+                bookingDate: result.bookingDate,
+                status: result.status,
+                price: result.price,
+                seatNumber: result.seatNumber,
+                request: {
+                  type: HttpMethods.GET,
+                  url: `${process.env.DOMAIN}:${process.env.PORT}/tickets/${result._id}`,
+                },
+              },
+            });
+          })
+          .catch((err) => {
+            console.log(err);
+            res.status(500).json({ error: err });
+          });
+      }
     })
     .catch((err) => {
       console.log(err);
@@ -50,11 +110,26 @@ router.post("/", (req: Request, res: Response, next: NextFunction) => {
 router.get("/:ticketId", (req: Request, res: Response, next: NextFunction) => {
   const id = req.params.ticketId;
   Ticket.findById(id)
+    .populate("user", "name email phone")
     .exec()
     .then((doc) => {
       if (doc) {
-        console.log(doc);
-        res.status(200).json(doc);
+        const response = {
+          ticket: {
+            _id: doc._id,
+            user: doc.user,
+            bookingDate: doc.bookingDate,
+            status: doc.status,
+            price: doc.price,
+            seatNumber: doc.seatNumber,
+            request: {
+              type: HttpMethods.GET,
+              description: "Get all tickets",
+              url: `${process.env.DOMAIN}:${process.env.PORT}/tickets`,
+            },
+          },
+        };
+        res.status(200).json(response);
       } else {
         res
           .status(404)
@@ -82,11 +157,21 @@ router.patch(
     Ticket.updateOne({ _id: id }, { $set: updateOpertions })
       .exec()
       .then((result) => {
-        console.log(result);
-        res.status(200).json({
-          message: `Successfully updated ticket with ID ${id}`,
-          id,
-        });
+        if (!result.acknowledged) {
+          res.status(400).json({
+            message: `Couldn't update the ticket with ID ${id}`,
+            success: result.acknowledged,
+          });
+        } else {
+          res.status(200).json({
+            message: `Successfully updated ticket with ID ${id}`,
+            success: result.acknowledged,
+            request: {
+              type: HttpMethods.GET,
+              url: `${process.env.DOMAIN}:${process.env.PORT}/tickets/${id}`,
+            },
+          });
+        }
       })
       .catch((err) => {
         console.log(err);
@@ -100,13 +185,26 @@ router.delete(
   (req: Request, res: Response, next: NextFunction) => {
     const id = req.params.ticketId;
 
-    Ticket.findByIdAndDelete(id)
+    Ticket.findOneAndDelete({ _id: id })
       .exec()
-      .then(() => {
-        res.status(200).json({
-          message: `Successfully deleted ticket with ID ${id}`,
-          id,
-        });
+      .then((doc) => {
+        if (!doc) {
+          res.status(404).json({ message: `No ticket found with ID ${id}` });
+        } else {
+          res.status(200).json({
+            message: `Successfully deleted ticket with ID ${id}`,
+            request: {
+              type: HttpMethods.POST,
+              description: "Create a new ticket",
+              url: `${process.env.DOMAIN}:${process.env.PORT}/tickets`,
+              body: {
+                user: "String",
+                price: "Number",
+                seatNumber: "Number",
+              },
+            },
+          });
+        }
       })
       .catch((err) => {
         console.log(err);

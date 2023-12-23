@@ -18,12 +18,14 @@
   "author": "Nishanth Gunupudi",
   "license": "ISC",
   "dependencies": {
+    "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.2",
     "express": "^4.18.2",
     "mongoose": "^8.0.3",
     "morgan": "^1.10.0"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/express": "^4.17.21",
     "@types/morgan": "^1.9.9",
     "@types/node": "^20.10.5",
