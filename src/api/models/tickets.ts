@@ -5,7 +5,6 @@ const ticketSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
-    required: true,
   },
   bookingDate: { type: Date, default: Date.now },
   status: {
@@ -19,9 +18,15 @@ const ticketSchema = new mongoose.Schema({
   },
   seatNumber: {
     type: Number,
-    required: true,
-    unique: true,
+  },
+  bus: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Bus",
   },
 });
+
+// Create a compound index for bus and seatNumber
+// This will ensure that a bus has only one ticket with a particular seatNumber
+ticketSchema.index({ bus: 1, seatNumber: 1 }, { unique: true });
 
 export default mongoose.model("Ticket", ticketSchema);

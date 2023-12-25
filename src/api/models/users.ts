@@ -10,7 +10,13 @@ const userSchema = new mongoose.Schema({
   email: {
     type: String,
     required: true,
+    // NOTE: This is not a validator. It creates an index in MongoDB to ensure uniqueness
     unique: true,
+    match: /.+\@.+\..+/,
+  },
+  isAdmin: {
+    type: Boolean,
+    default: false,
   },
   password: {
     type: String,
@@ -18,8 +24,10 @@ const userSchema = new mongoose.Schema({
   },
   phone: {
     type: String,
-    required: true,
+    // NOTE: This is not a validator. It creates an index in MongoDB to ensure uniqueness
     unique: true,
+    // NOTE: This regex is for IN phone numbers only
+    match: /^[6-9]\d{9}$/,
   },
   createdAt: {
     type: Date,

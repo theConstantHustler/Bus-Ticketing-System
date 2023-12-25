@@ -8,6 +8,10 @@ import "dotenv/config";
 
 import ticketRoutes from "./api/routes/tickets";
 import usersRoutes from "./api/routes/users";
+import busRoutes from "./api/routes/buses";
+import adminRoutes from "./api/routes/admin";
+
+import initializeBus from "./api/helper/dataSeed";
 
 // Initialize express
 const app = express();
@@ -41,11 +45,24 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 // Routes which should handle requests
 app.use("/tickets", ticketRoutes);
 app.use("/users", usersRoutes);
+app.use("/buses", busRoutes);
+app.use("/admin", adminRoutes);
 
 // Connect to MongoDB Atlas database
-mongoose.connect(
-  `mongodb+srv://${process.env.MONGO_ATLAS_USER}:${process.env.MONGO_ATLAS_PW}@authenticatebackend.puhr1qv.mongodb.net/?retryWrites=true&w=majority`
-);
+mongoose
+  .connect(
+    `mongodb+srv://${process.env.MONGO_ATLAS_USER}:${process.env.MONGO_ATLAS_PW}@authenticatebackend.puhr1qv.mongodb.net/?retryWrites=true&w=majority`
+  )
+  .then(() => {
+    console.log("Connected to MongoDB Atlas database");
+
+    // TODO: Uncomment the following line to initialize the database with a bus
+    // Initialize a bus with 40 seats
+    // initializeBus(40);
+  })
+  .catch((err) => {
+    console.error("Error connecting to MongoDB Atlas database:", err);
+  });
 
 // Error handling for non-existent routes
 app.use((req: Request, res: Response, next: NextFunction) => {

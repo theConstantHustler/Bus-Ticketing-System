@@ -1,8 +1,10 @@
 import express, { Request, Response, NextFunction } from "express";
 import mongoose from "mongoose";
+import jwtMiddleware from "../middleware/jwt";
 
 import Ticket from "../models/tickets";
 import User from "../models/users";
+import Bus from "../models/bus";
 
 const router = express.Router();
 
@@ -20,7 +22,7 @@ enum TicketStatus {
 
 router.get("/", (req: Request, res: Response, next: NextFunction) => {
   Ticket.find()
-    .select("_id user bookingDate status price seatNumber")
+    .select("_id user bookingDate status price seatNumber bus")
     .populate("user", "name email phone")
     .exec()
     .then((docs) => {
@@ -35,6 +37,7 @@ router.get("/", (req: Request, res: Response, next: NextFunction) => {
               status: doc.status,
               price: doc.price,
               seatNumber: doc.seatNumber,
+              bus: doc.bus,
               request: {
                 type: HttpMethods.GET,
                 url: `${process.env.DOMAIN}:${process.env.PORT}/tickets/${doc._id}`,
@@ -55,51 +58,76 @@ router.get("/", (req: Request, res: Response, next: NextFunction) => {
 });
 
 router.post("/", (req: Request, res: Response, next: NextFunction) => {
-  User.findById(req.body.user)
-    .exec()
-    .then((user) => {
-      if (user) {
-        const ticket = new Ticket({
-          _id: new mongoose.Types.ObjectId(),
-          user: req.body.user,
-          price: req.body.price,
-          seatNumber: req.body.seatNumber,
-          status: TicketStatus.CONFIRMED,
-        });
+  const busId = req.body.busId;
 
-        ticket
-          .save()
-          .then((result) => {
-            res.status(201).json({
-              message: "Successfully created a new ticket",
-              ticket: {
-                _id: result._id,
-                user: {
-                  _id: user._id,
-                  name: user.name,
-                  email: user.email,
-                  phone: user.phone,
-                  request: {
-                    type: HttpMethods.GET,
-                    url: `${process.env.DOMAIN}:${process.env.PORT}/users/${user._id}`,
-                  },
-                },
-                bookingDate: result.bookingDate,
-                status: result.status,
-                price: result.price,
-                seatNumber: result.seatNumber,
-                request: {
-                  type: HttpMethods.GET,
-                  url: `${process.env.DOMAIN}:${process.env.PORT}/tickets/${result._id}`,
-                },
-              },
-            });
-          })
-          .catch((err) => {
-            console.log(err);
-            res.status(500).json({ error: err });
-          });
+  Bus.findById(busId)
+    .exec()
+    .then((bus) => {
+      if (!bus) {
+        return res.status(404).json({ message: "Bus not found" });
       }
+
+      if (bus.bookedSeats >= bus.totalSeats) {
+        return res.status(400).json({ message: "No available seats" });
+      }
+
+      User.findOne({ email: req.body.email })
+        .exec()
+        .then((user) => {
+          if (user) {
+            const ticket = new Ticket({
+              _id: new mongoose.Types.ObjectId(),
+              user: req.body.user,
+              price: req.body.price,
+              seatNumber: bus.bookedSeats + 1,
+              status: TicketStatus.CONFIRMED,
+              bus: busId,
+            });
+
+            ticket
+              .save()
+              .then((result) => {
+                // Increment the number of booked seats for the bus
+                Bus.updateOne(
+                  { _id: busId },
+                  { $inc: { bookedSeats: 1 } }
+                ).exec();
+
+                res.status(201).json({
+                  message: "Successfully created a new ticket",
+                  ticket: {
+                    _id: result._id,
+                    user: {
+                      _id: user._id,
+                      name: user.name,
+                      email: user.email,
+                      phone: user.phone,
+                      request: {
+                        type: HttpMethods.GET,
+                        url: `${process.env.DOMAIN}:${process.env.PORT}/users/${user._id}`,
+                      },
+                    },
+                    bookingDate: result.bookingDate,
+                    status: result.status,
+                    price: result.price,
+                    seatNumber: result.seatNumber,
+                    request: {
+                      type: HttpMethods.GET,
+                      url: `${process.env.DOMAIN}:${process.env.PORT}/tickets/${result._id}`,
+                    },
+                  },
+                });
+              })
+              .catch((err) => {
+                console.log(err);
+                res.status(500).json({ error: err });
+              });
+          }
+        })
+        .catch((err) => {
+          console.log(err);
+          res.status(500).json({ error: err });
+        });
     })
     .catch((err) => {
       console.log(err);
