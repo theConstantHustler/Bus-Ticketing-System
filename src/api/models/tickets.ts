@@ -6,11 +6,11 @@ const ticketSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
   },
-  bookingDate: { type: Date, default: Date.now },
+  bookingDate: { type: Date, default: null },
   status: {
     type: String,
-    enum: ["open", "pending", "confirmed", "cancelled"],
-    default: "pending",
+    enum: ["open", "closed"],
+    default: "open",
   },
   price: {
     type: Number,
