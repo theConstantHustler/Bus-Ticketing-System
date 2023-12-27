@@ -3,7 +3,6 @@ import morgan from "morgan";
 import bodyParser from "body-parser";
 import mongoose from "mongoose";
 
-// Import environment variables from .env file
 import "dotenv/config";
 
 import ticketRoutes from "./api/routes/tickets";
@@ -11,7 +10,7 @@ import usersRoutes from "./api/routes/users";
 import busRoutes from "./api/routes/buses";
 import adminRoutes from "./api/routes/admin";
 
-import initializeBus from "./api/helper/dataSeed";
+import initializeBus from "./utils";
 
 // Initialize express
 const app = express();

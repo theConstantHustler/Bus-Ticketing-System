@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
-import Bus from "../models/buses";
-import Ticket from "../models/tickets";
+import Bus from "../api/models/buses";
+import Ticket from "../api/models/tickets";
 
 function initializeBus(seatCount: number, price: number) {
   const newBus = new Bus({
