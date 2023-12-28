@@ -53,9 +53,8 @@ mongoose
   .then(() => {
     console.log("Connected to MongoDB Atlas database");
 
-    // TODO: Uncomment the following line to initialize the database with a bus
     // Initialize a bus with 40 seats
-    // initializeBus(40, 1200);
+    initializeBus(40, 1340);
   })
   .catch((err) => {
     console.error("Error connecting to MongoDB Atlas database:", err);
