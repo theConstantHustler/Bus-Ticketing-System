@@ -13,6 +13,7 @@ const router = express.Router();
 // Sign up a new user
 router.post(
   "/signup",
+  jwtMiddleware,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existingUser = await User.find({ email: req.body.email }).exec();
@@ -45,7 +46,8 @@ router.post(
           email: result.email,
           phone: result.phone,
           request: {
-            type: "GET",
+            type: HttpMethods.GET,
+            description: "Get the details of this user",
             url: `${process.env.DOMAIN}:${process.env.PORT}/users/${result._id}`,
           },
         },
@@ -60,7 +62,7 @@ router.post(
   }
 );
 
-// Get all the user details by ID
+// Get all the user details
 router.get(
   "/",
   jwtMiddleware,
@@ -86,6 +88,7 @@ router.get(
           isAdmin: doc.isAdmin,
           request: {
             type: HttpMethods.GET,
+            description: "Get the details of this user",
             url: `${process.env.DOMAIN}:${process.env.PORT}/users/${doc._id}`,
           },
         };
@@ -131,7 +134,8 @@ router.get(
         updatedAt: doc.updatedAt,
         request: {
           type: HttpMethods.GET,
-          url: `${process.env.DOMAIN}:${process.env.PORT}/users/${doc._id}`,
+          description: "Get the details all the users",
+          url: `${process.env.DOMAIN}:${process.env.PORT}/users`,
         },
       });
     } catch (err) {
@@ -173,6 +177,7 @@ router.patch(
         success: result.acknowledged,
         request: {
           type: HttpMethods.GET,
+          description: "Get the details of this user",
           url: `${process.env.DOMAIN}:${process.env.PORT}/users/${id}`,
         },
       });
@@ -203,6 +208,7 @@ router.delete(
         message: `Successfully deleted user with ID ${id}`,
         request: {
           type: HttpMethods.POST,
+          description: "Create a new user",
           url: `${process.env.DOMAIN}:${process.env.PORT}/users`,
           body: {
             name: "String",

@@ -1,6 +1,5 @@
 import express from "express";
 import { Request, Response, NextFunction } from "express";
-import mongoose from "mongoose";
 
 import Bus from "../models/buses";
 import Ticket from "../models/tickets";
@@ -55,6 +54,21 @@ router.get(
         return res.status(404).json({ message: "Ticket not found" });
       }
 
+      if (ticket.status === TicketStatus.OPEN) {
+        return res.status(404).json({
+          message: "Ticket not booked",
+          request: {
+            type: HttpMethods.PATCH,
+            description: "Edit the status or book this ticket",
+            url: `${process.env.DOMAIN}:${process.env.PORT}/buses/${busId}/tickets/${seatNumber}`,
+            body: {
+              userId: "String",
+              status: "String",
+            },
+          },
+        });
+      }
+
       // Find the user associated with the ticket
       const user = await User.findById(ticket.user?._id)
         .select("_id name email phone")
@@ -69,8 +83,6 @@ router.get(
       // Return user details
       res.status(200).json({
         user: user,
-        seatNumber: ticket.seatNumber,
-        bus: ticket.bus?._id,
         status: ticket.status,
         request: {
           type: HttpMethods.GET,
@@ -126,6 +138,10 @@ router.get(
             type: HttpMethods.PATCH,
             description: "Edit the status or book this ticket",
             url: `${process.env.DOMAIN}:${process.env.PORT}/buses/${busId}/tickets/${doc.seatNumber}`,
+            body: {
+              userId: "String",
+              status: "String",
+            },
           },
         },
       };
@@ -183,6 +199,10 @@ router.get("/:busId/tickets", async (req: Request, res: Response) => {
         type: HttpMethods.PATCH,
         description: "Edit the status or book this ticket",
         url: `${process.env.DOMAIN}:${process.env.PORT}/buses/${busId}/tickets/${doc.seatNumber}`,
+        body: {
+          userId: "String",
+          status: "String",
+        },
       },
     }));
 
@@ -204,7 +224,6 @@ const ticketUpdateSchema = Joi.object({
 });
 
 // Updates the status of a ticket of a bus with the given seat number
-// TODO: make this route accessible only to admins or the user who booked the ticket
 router.patch(
   "/:busId/tickets/:seatNumber",
   async (req: Request, res: Response) => {
@@ -260,8 +279,8 @@ router.patch(
         ticket.bookingDate = new Date();
         bus.bookedSeats += 1;
       } else if (status === TicketStatus.OPEN) {
-        ticket.user = null;
         //@ts-ignore
+        ticket.user = null;
         ticket.bookingDate = null;
         bus.bookedSeats -= 1;
       }

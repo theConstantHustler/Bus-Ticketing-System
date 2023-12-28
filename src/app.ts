@@ -5,7 +5,6 @@ import mongoose from "mongoose";
 
 import "dotenv/config";
 
-import ticketRoutes from "./api/routes/tickets";
 import usersRoutes from "./api/routes/users";
 import busRoutes from "./api/routes/buses";
 import adminRoutes from "./api/routes/admin";
@@ -42,7 +41,6 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 // Routes which should handle requests
-app.use("/tickets", ticketRoutes);
 app.use("/users", usersRoutes);
 app.use("/buses", busRoutes);
 app.use("/admin", adminRoutes);
